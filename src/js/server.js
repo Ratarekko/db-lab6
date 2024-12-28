@@ -1,5 +1,6 @@
 import express from 'express';
-import UserDAO from './database.js';
+import UserDAO from './userDAO.js';
+import ProjectDAO from './projectDAO.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -49,6 +50,55 @@ app.put('/users/:id', async (req, res) => {
 app.delete('/users/:id', async (req, res) => {
     try {
         const result = await UserDAO.deleteUser(req.params.id);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/projects', async (req, res) => {
+    try {
+        const projects = await ProjectDAO.getAllProjects();
+        res.json(projects);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/projects/:id', async (req, res) => {
+    try {
+        const project = await ProjectDAO.getProjectById(req.params.id);
+        if (project) {
+            res.json(project);
+        } else {
+            res.status(404).json({ error: 'Project not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/projects', async (req, res) => {
+    try {
+        const newProject = await ProjectDAO.createProject(req.body);
+        res.status(201).json(newProject);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/projects/:id', async (req, res) => {
+    try {
+        const updatedProject = await ProjectDAO.updateProject(req.params.id, req.body);
+        res.json(updatedProject);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/projects/:id', async (req, res) => {
+    try {
+        const result = await ProjectDAO.deleteProject(req.params.id);
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
