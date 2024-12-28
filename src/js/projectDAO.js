@@ -13,8 +13,8 @@ const ProjectDAO = {
 
     async createProject({ name, description }) {
         const [result] = await pool.query(
-            'INSERT INTO Project (name, description) VALUES (?, ?)',
-            [name, description]
+            'INSERT INTO Project (name, description, status) VALUES (?, ?, ?)',
+            [name, description, 'ACTIVE']
         );
         return { id: result.insertId, name, description };
     },
