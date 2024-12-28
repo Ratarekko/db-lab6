@@ -290,3 +290,217 @@ VALUES
 ```
 
 ## RESTfull сервіс для управління даними
+_db.js_
+```js
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+});
+
+export default pool;
+
+```
+
+_userDAO.js_
+```js
+import pool from './db.js';
+
+const UserDAO = {
+    async getAllUsers() {
+        const [rows] = await pool.query('SELECT * FROM User');
+        return rows;
+    },
+
+    async getUserById(id) {
+        const [rows] = await pool.query('SELECT * FROM User WHERE id = ?', [id]);
+        return rows[0];
+    },
+
+    async createUser({ name, email, password, profilePicture, status }) {
+        const [result] = await pool.query(
+            'INSERT INTO User (name, email, password, profilePicture, status) VALUES (?, ?, ?, ?, ?)',
+            [name, email, password, profilePicture, status]
+        );
+        return { id: result.insertId, name, email, password, profilePicture, status };
+    },
+
+    async updateUser(id, { name, email, password, profilePicture, status }) {
+        await pool.query(
+            'UPDATE User SET name = ?, email = ?, password = ?, profilePicture = ?, status = ? WHERE id = ?',
+            [name, email, password, profilePicture, status, id]
+        );
+        return { id, name, email, password, profilePicture, status };
+    },
+
+    async deleteUser(id) {
+        await pool.query('DELETE FROM User WHERE id = ?', [id]);
+        return { message: `User with ID ${id} deleted` };
+    },
+};
+
+export default UserDAO;
+
+```
+
+_projectDAO.js_
+```js
+import pool from './db.js';
+
+const ProjectDAO = {
+    async getAllProjects() {
+        const [rows] = await pool.query('SELECT * FROM Project');
+        return rows;
+    },
+
+    async getProjectById(id) {
+        const [rows] = await pool.query('SELECT * FROM Project WHERE id = ?', [id]);
+        return rows[0];
+    },
+
+    async createProject({ name, description }) {
+        const [result] = await pool.query(
+            'INSERT INTO Project (name, description, status) VALUES (?, ?, ?)',
+            [name, description, 'ACTIVE']
+        );
+        return { id: result.insertId, name, description };
+    },
+
+    async updateProject(id, { name, description }) {
+        await pool.query(
+            'UPDATE Project SET name = ?, description = ? WHERE id = ?',
+            [name, description, id]
+        );
+        return { id, name, description };
+    },
+
+    async deleteProject(id) {
+        await pool.query('DELETE FROM Project WHERE id = ?', [id]);
+        return { message: `Project with ID ${id} deleted` };
+    },
+};
+
+export default ProjectDAO;
+
+```
+
+_server.js_
+```js
+import express from 'express';
+import UserDAO from './userDAO.js';
+import ProjectDAO from './projectDAO.js';
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.json());
+
+app.get('/users', async (req, res) => {
+    try {
+        const users = await UserDAO.getAllUsers();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/users/:id', async (req, res) => {
+    try {
+        const user = await UserDAO.getUserById(req.params.id);
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/users', async (req, res) => {
+    try {
+        const newUser = await UserDAO.createUser(req.body);
+        res.status(201).json(newUser);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/users/:id', async (req, res) => {
+    try {
+        const updatedUser = await UserDAO.updateUser(req.params.id, req.body);
+        res.json(updatedUser);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/users/:id', async (req, res) => {
+    try {
+        const result = await UserDAO.deleteUser(req.params.id);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/projects', async (req, res) => {
+    try {
+        const projects = await ProjectDAO.getAllProjects();
+        res.json(projects);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/projects/:id', async (req, res) => {
+    try {
+        const project = await ProjectDAO.getProjectById(req.params.id);
+        if (project) {
+            res.json(project);
+        } else {
+            res.status(404).json({ error: 'Project not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/projects', async (req, res) => {
+    try {
+        const newProject = await ProjectDAO.createProject(req.body);
+        res.status(201).json(newProject);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/projects/:id', async (req, res) => {
+    try {
+        const updatedProject = await ProjectDAO.updateProject(req.params.id, req.body);
+        res.json(updatedProject);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/projects/:id', async (req, res) => {
+    try {
+        const result = await ProjectDAO.deleteProject(req.params.id);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
+
+```
